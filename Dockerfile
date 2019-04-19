@@ -1,20 +1,18 @@
-# docker run --rm -it
-FROM alpine:latest
-LABEL maintainer="wade dismukes <waded@iastate.edu>"
+# updated to reflect Minor Gordon's changes to this Dockerfile file
+FROM ubuntu:latest as build
 RUN apt-get update -q && \
-    apt-get install -y -q --no-install-recommends \
+    apt-get install -y -q \
     build-essential \
     bash-completion \
     git \
     cmake
-COPY . /revbayes
+RUN git clone --depth=1 https://github.com/revbayes/revbayes.git /revbayes
+RUN cd /revbayes/projects/cmake/ && ./build.sh
 
-RUN cd revbayes/projects/cmake/ && ./build.sh
+FROM ubuntu:latest
+COPY --from=build /revbayes/projects/cmake/rb /revbayes/
+COPY --from=build /revbayes/projects/cmake/build/core/librb-core.a /revbayes/
+COPY --from=build /revbayes/projects/cmake/build/revlanguage/librb-parser.a /revbayes/
+COPY --from=build /revbayes/projects/cmake/build/libs/liblibs.a /revbayes/
 
-
-ENV PATH="/revbayes/projects/cmake:${PATH}"
-ENV HOME /home/user
-RUN useradd --create-home --home-dir $HOME user \
-    && chown -R user:user ${HOME}
-
-WORKDIR ${HOME}
+ENTRYPOINT ["/revbayes/rb"]
